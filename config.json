@@ -1,0 +1,81 @@
+{
+    "camera": {
+        "resolution": [1640, 1232],
+        "fps": 30,
+        "rotation": 0,
+        "sensor_mode": "full_fov"
+    },
+    "detection": {
+        "confidence_threshold": 0.4,
+        "nms_threshold": 0.3,
+        "max_faces": 1,
+        "face_absence_threshold": 4.0,
+        "head_turn_threshold": 25
+    },
+    "attendance": {
+        "recognition_threshold": 0.6,
+        "confirmation_frames": 3,
+        "reconfirmation_interval": 300,
+        "auto_mark_attendance": true,
+        "save_recognition_photos": true,
+        "attendance_timeout": 1800,
+        "duplicate_detection_window": 60
+    },
+    "alerts": {
+        "email_enabled": false,
+        "email_smtp": "smtp.gmail.com",
+        "email_port": 587,
+        "email_from": "your_email@gmail.com",
+        "email_password": "your_app_password",
+        "email_to": "supervisor@school.edu",
+        "sound_alerts": true,
+        "attendance_alerts": true,
+        "violation_alerts": true
+    },
+    "model": {
+        "yolo_model": "yolov5m",
+        "device": "cpu",
+        "face_recognition_model": "large",
+        "face_detection_method": "hog"
+    },
+    "web_server": {
+        "host": "0.0.0.0",
+        "port": 5000,
+        "debug": false,
+        "upload_folder": "uploads",
+        "max_file_size": 16777216
+    },
+    "monitoring": {
+        "alert_cooldown": 30,
+        "screenshot_quality": 90,
+        "log_level": "INFO",
+        "session_timeout": 3600,
+        "auto_cleanup_days": 30
+    },
+    "database": {
+        "backup_interval": 86400,
+        "max_backup_files": 7,
+        "vacuum_interval": 604800
+    },
+    "face_recognition": {
+        "tolerance": 0.6,
+        "num_jitters": 1,
+        "face_detection_model": "hog",
+        "unknown_face_threshold": 0.8,
+        "encoding_quality": "high"
+    },
+    "security": {
+        "max_login_attempts": 5,
+        "session_timeout": 1800,
+        "require_https": false,
+        "allowed_file_types": ["jpg", "jpeg", "png"],
+        "max_students": 1000
+    },
+    "storage": {
+        "photos_directory": "students/photos",
+        "encodings_directory": "students/encodings",
+        "attendance_photos_directory": "attendance_photos",
+        "screenshots_directory": "screenshots",
+        "logs_directory": "logs"
+    }
+}

@@ -1,0 +1,71 @@
+{
+    "serial_port": "/dev/ttyAMA0",
+    "baudrate": 9600,
+    "movement_speed": 80,
+    "turn_speed": 60,
+    "detection_duration": 30,
+    "student_positions": [
+        {
+            "name": "Student Position 1 - Front Row Left",
+            "description": "First student desk in front row, left side",
+            "forward_time": 2.0,
+            "turn_angle": 0,
+            "turn_time": 0.0,
+            "notes": "Straight movement to first position"
+        },
+        {
+            "name": "Student Position 2 - Front Row Center", 
+            "description": "Second student desk in front row, center",
+            "forward_time": 1.5,
+            "turn_angle": 1,
+            "turn_time": 1.0,
+            "notes": "Move forward then turn left to face center desk"
+        },
+        {
+            "name": "Student Position 3 - Front Row Right",
+            "description": "Third student desk in front row, right side", 
+            "forward_time": 1.5,
+            "turn_angle": 2,
+            "turn_time": 1.2,
+            "notes": "Move forward then turn right to face right desk"
+        }
+    ],
+    "return_to_start": true,
+    "pause_between_moves": 2.0,
+    "head_scan_enabled": true,
+    "head_scan_angles": [-45, -20, 0, 20, 45],
+    "head_scan_interval": 8.0,
+    "head_tilt_angle": -10,
+    "safety_settings": {
+        "max_movement_time": 10.0,
+        "movement_timeout": 15.0,
+        "emergency_stop_on_high_violations": true,
+        "max_violations_before_stop": 10,
+        "require_confirmation_for_movement": false
+    },
+    "detection_settings": {
+        "enable_monitoring_during_movement": false,
+        "enable_attendance_tracking": true,
+        "save_violation_screenshots": true,
+        "alert_on_violations": true,
+        "violation_confidence_threshold": 0.7
+    },
+    "advanced_movement": {
+        "use_acceleration_control": true,
+        "smooth_turns": true,
+        "position_verification": false,
+        "return_path_optimization": true
+    },
+    "logging": {
+        "log_all_movements": true,
+        "log_detection_events": true,
+        "save_movement_summary": true,
+        "detailed_timing_logs": false
+    },
+    "customization": {
+        "classroom_layout": "3x3_grid",
+        "desk_spacing_meters": 1.5,
+        "robot_height_adjustment": 0,
+        "camera_field_of_view": 60
+    }
+}

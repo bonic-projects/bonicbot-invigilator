@@ -1,0 +1,205 @@
+# Enhanced Exam Monitoring System with Robot Invigilator - Requirements
+# Complete dependency list for autonomous robot invigilation capabilities
+
+# Core Python Dependencies
+numpy>=1.21.0
+opencv-python-headless>=4.5.0
+Pillow>=8.0.0
+
+# Machine Learning and AI
+torch>=1.9.0
+torchvision>=0.10.0
+ultralytics>=8.0.0
+seaborn>=0.11.0
+matplotlib>=3.3.0
+scipy>=1.7.0
+scikit-learn>=1.0.0
+pandas>=1.3.0
+
+# Face Recognition (requires dlib)
+dlib>=19.22.0
+face_recognition>=1.3.0
+
+# YOLO Dependencies
+PyYAML>=5.4.0
+requests>=2.25.0
+tqdm>=4.60.0
+thop>=0.0.31
+
+# Web Framework and Interface
+Flask>=2.0.0
+Flask-Cors>=3.0.0
+Werkzeug>=2.0.0
+
+# Robot Communication and Control
+pyserial>=3.5         # Serial communication for robot control
+bonicbot>=1.0.0        # BonicBot library (install if available)
+
+# Raspberry Pi Hardware Support
+RPi.GPIO>=0.7.0        # GPIO control (Pi hardware)
+picamera2>=0.3.0       # Pi Camera v2/v3 support (Pi 5)
+
+# System Monitoring and Utilities
+psutil>=5.8.0          # System performance monitoring
+
+# Date/Time and Data Handling
+python-dateutil>=2.8.0
+python-magic>=0.4.0
+
+# Email and Communication
+email-validator>=1.1.0
+smtplib2>=0.2.0        # Enhanced email support
+
+# Database and Storage
+sqlite3               # Built-in Python module
+
+# Configuration and Logging
+configparser>=5.0.0   # Configuration file handling
+logging>=0.4.9.6      # Enhanced logging
+
+# Optional Dependencies for Enhanced Features
+# Uncomment if needed:
+
+# Production Web Server
+# gunicorn>=20.1.0     # For production web server deployment
+# gevent>=21.1.0       # Async web server support
+
+# Advanced Image Processing
+# scikit-image>=0.18.0 # Advanced image processing
+# imageio>=2.9.0       # Image I/O operations
+
+# Audio Alerts (if using sound notifications)
+# pygame>=2.0.0        # Audio playback
+# pydub>=0.25.0        # Audio processing
+
+# Advanced Database Support
+# sqlalchemy>=1.4.0   # Advanced database ORM
+# alembic>=1.7.0       # Database migrations
+
+# Cloud Integration (optional)
+# boto3>=1.17.0        # AWS integration
+# google-cloud-storage>=1.42.0  # Google Cloud storage
+# azure-storage-blob>=12.8.0    # Azure blob storage
+
+# Advanced Analytics and Reporting
+# plotly>=5.0.0        # Interactive charts
+# dash>=2.0.0          # Dashboard framework
+# reportlab>=3.6.0     # PDF report generation
+
+# Development and Testing
+# pytest>=6.2.0       # Testing framework
+# pytest-cov>=2.12.0  # Coverage testing
+# black>=21.0.0        # Code formatting
+# flake8>=3.9.0        # Code linting
+
+# Security Enhancements
+# bcrypt>=3.2.0        # Password hashing
+# PyJWT>=2.1.0         # JWT token handling
+# cryptography>=3.4.0 # Encryption support
+
+# Performance Optimization
+# cython>=0.29.0       # Python code compilation
+# numba>=0.53.0        # JIT compilation for numpy
+
+# Robot Hardware Specific (uncomment based on robot type)
+# For Arduino-based robots:
+# pyFirmata>=1.1.0     # Arduino communication
+# pyfirmata2>=2.2.0    # Enhanced Arduino support
+
+# For I2C communication:
+# smbus2>=0.4.0        # I2C bus communication
+# adafruit-circuitpython-motor>=3.3.0  # Motor control
+
+# For servo control:
+# adafruit-circuitpython-servo>=1.15.0
+# adafruit-circuitpython-pca9685>=3.4.0
+
+# For sensor integration:
+# adafruit-circuitpython-ultrasonic>=1.2.0  # Distance sensors
+# adafruit-circuitpython-bno055>=1.4.0      # IMU sensors
+
+# Bluetooth communication (if robot uses Bluetooth):
+# pybluez>=0.23        # Bluetooth communication
+# bluetooth-low-energy>=0.7.0  # BLE support
+
+# WiFi robot communication:
+# websockets>=9.1      # WebSocket communication
+# requests-websocket>=0.9.0  # WebSocket client
+
+# Camera Enhancement Libraries
+# For advanced camera features:
+# v4l2py>=0.6.0        # Video4Linux camera control
+# pygst-utils>=0.1.0   # GStreamer utilities
+
+# Mobile App Integration (if building companion app)
+# kivy>=2.0.0          # Cross-platform mobile framework
+# buildozer>=1.2.0     # Mobile app deployment
+
+# Network Discovery and Communication
+# zeroconf>=0.32.0     # Network service discovery
+# netifaces>=0.11.0    # Network interface information
+
+# Advanced Logging and Monitoring
+# prometheus-client>=0.11.0  # Metrics collection
+# grafana-api>=1.0.3         # Dashboard integration
+# sentry-sdk>=1.4.0          # Error tracking
+
+# Machine Learning Model Management
+# mlflow>=1.20.0       # ML model versioning
+# tensorflow>=2.6.0    # Alternative ML framework (if needed)
+
+# Note: Some packages may require system-level dependencies
+# Install these via apt-get on Raspberry Pi:
+#
+# sudo apt install -y python3-dev
+# sudo apt install -y libatlas-base-dev
+# sudo apt install -y libjpeg-dev zlib1g-dev
+# sudo apt install -y libfreetype6-dev liblcms2-dev
+# sudo apt install -y libopenjp2-7-dev libtiff5-dev tk-dev tcl-dev
+# sudo apt install -y libharfbuzz-dev libfribidi-dev libxcb1-dev
+# sudo apt install -y cmake build-essential
+# sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base
+# sudo apt install -y gstreamer1.0-plugins-good gstreamer1.0-libcamera
+
+# Raspberry Pi 5 Specific Dependencies
+# For optimal Pi 5 performance:
+# sudo apt install -y python3-picamera2
+# sudo apt install -y libcamera-apps libcamera-dev
+# sudo apt install -y python3-libcamera python3-kms++
+
+# Robot Testing and Calibration Tools
+# For robot testing and calibration:
+# matplotlib>=3.3.0    # Plotting for calibration
+# notebook>=6.4.0      # Jupyter notebook for analysis
+
+# Version Constraints for Stability
+# Pin versions for production deployment:
+# Flask==2.3.3
+# opencv-python-headless==4.8.1.78
+# numpy==1.24.3
+# face_recognition==1.3.0
+# pyserial==3.5
+
+# Installation Notes:
+# 1. Install system dependencies first (see comments above)
+# 2. Create virtual environment: python3 -m venv exam_monitor_env
+# 3. Activate environment: source exam_monitor_env/bin/activate
+# 4. Install requirements: pip install -r requirements.txt
+# 5. Test installation: python test_robot.py
+
+# Troubleshooting Common Issues:
+# - dlib compilation errors: Increase swap space or use pre-built wheels
+# - OpenCV issues: sudo apt install python3-opencv
+# - Serial permission errors: sudo usermod -a -G dialout $USER (reboot required)
+# - Camera issues: sudo raspi-config -> Interface Options -> Camera -> Enable
+
+# Performance Recommendations:
+# - Use --no-cache-dir flag for pip install on limited storage
+# - Consider using --find-links for local wheel packages
+# - Set MAKEFLAGS="-j1" for single-core compilation on limited RAM
+
+# Hardware-Specific Notes:
+# - Raspberry Pi 3: Minimum requirements, may need performance tuning
+# - Raspberry Pi 4: Recommended for full feature set
+# - Raspberry Pi 5: Optimal performance, all features supported
+# - Other SBCs: May require dependency modifications

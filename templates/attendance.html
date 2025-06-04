@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Management - Exam System{% endblock %}
+
+{% block nav_attendance %}active{% endblock %}
+
+{% block extra_css %}
+.attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.attendance-table th,
+.attendance-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.attendance-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.status-present { color: #4CAF50; font-weight: bold; }
+.status-absent { color: #f44336; font-weight: bold; }
+
+.manual-attendance {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.manual-attendance input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.session-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .session-controls { flex-direction: column; }
+    .manual-attendance { flex-direction: column; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>📋 Attendance Management</h1>
+    <p>Real-time Student Attendance Tracking</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="total-students" style="color: #3498db;">0</div>
+        <div class="stat-label">Registered Students</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="present-students" style="color: #4CAF50;">0</div>
+        <div class="stat-label">Present Today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="absent-students" style="color: #e74c3c;">0</div>
+        <div class="stat-label">Absent Today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="attendance-percentage" style="color: #9b59b6;">0%</div>
+        <div class="stat-label">Attendance Rate</div>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Attendance Session Control</h3>
+    <div class="session-controls">
+        <button class="btn btn-primary" onclick="startAttendanceSession()">
+            <i class="fas fa-play"></i> Start Attendance Session
+        </button>
+        <button class="btn btn-danger" onclick="stopAttendanceSession()">
+            <i class="fas fa-stop"></i> Stop Attendance Session
+        </button>
+        <button class="btn btn-warning" onclick="exportAttendance()">
+            <i class="fas fa-download"></i> Export Report
+        </button>
+    </div>
+    
+    <div id="session-status" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+        <strong>Session Status:</strong> <span id="session-status-text">Checking...</span>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Manual Attendance</h3>
+    <div class="manual-attendance">
+        <input type="text" id="student-id-input" placeholder="Enter Student ID">
+        <button class="btn btn-primary" onclick="markAttendance()">
+            <i class="fas fa-check"></i> Mark Present
+        </button>
+        <button class="btn btn-danger" onclick="unmarkAttendance()">
+            <i class="fas fa-times"></i> Mark Absent
+        </button>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Today's Attendance</h3>
+    <div id="attendance-list" style="text-align: center; padding: 20px; color: #666;">
+        Loading attendance data...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+function updateAttendanceStats() {
+    fetch('/api/attendance')
+        .then(response => response.json())
+        .then(data => {
+            const attendance = data.attendance || [];
+            const presentStudents = attendance.filter(a => a.status === 'present');
+            
+            document.getElementById('present-students').textContent = presentStudents.length;
+            document.getElementById('absent-students').textContent = attendance.length - presentStudents.length;
+            
+            updateAttendanceList(attendance);
+        })
+        .catch(error => {
+            console.error('Error fetching attendance:', error);
+        });
+    
+    fetch('/api/students')
+        .then(response => response.json())
+        .then(data => {
+            const totalStudents = data.students?.length || 0;
+            document.getElementById('total-students').textContent = totalStudents;
+            
+            const presentCount = parseInt(document.getElementById('present-students').textContent);
+            const percentage = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+            document.getElementById('attendance-percentage').textContent = percentage + '%';
+        })
+        .catch(error => {
+            console.error('Error fetching students:', error);
+        });
+    
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            const statusText = document.getElementById('session-status-text');
+            if (data.attendance_active) {
+                statusText.textContent = 'Active - Tracking attendance automatically';
+                statusText.style.color = '#4CAF50';
+            } else {
+                statusText.textContent = 'Inactive - Manual attendance only';
+                statusText.style.color = '#f44336';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching status:', error);
+        });
+}
+
+function updateAttendanceList(attendance) {
+    const listDiv = document.getElementById('attendance-list');
+    
+    if (!attendance || attendance.length === 0) {
+        listDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No attendance records for today.</p>';
+        return;
+    }
+    
+    const tableHTML = `
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Check-in Time</th>
+                    <th>Status</th>
+                    <th>Confidence</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${attendance.map(record => `
+                    <tr>
+                        <td>${record.student_id}</td>
+                        <td>${record.first_name} ${record.last_name}</td>
+                        <td>${record.course || 'N/A'}</td>
+                        <td>${record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString() : 'N/A'}</td>
+                        <td class="status-${record.status}">${record.status?.toUpperCase() || 'UNKNOWN'}</td>
+                        <td>${record.confidence ? (record.confidence * 100).toFixed(1) + '%' : 'Manual'}</td>
+                        <td>
+                            ${record.status === 'present' ? 
+                                `<button class="btn btn-danger" onclick="unmarkStudent('${record.student_id}')">Unmark</button>` :
+                                `<button class="btn btn-primary" onclick="markStudent('${record.student_id}')">Mark Present</button>`
+                            }
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    listDiv.innerHTML = tableHTML;
+}
+
+function startAttendanceSession() {
+    fetch('/api/attendance/session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'start', mode: 'auto'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('✅ Success', data.message, 'success');
+            updateAttendanceStats();
+        } else {
+            showNotification('❌ Error', data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error starting attendance session:', error);
+        showNotification('❌ Error', 'Error starting attendance session', 'error');
+    });
+}
+
+function stopAttendanceSession() {
+    fetch('/api/attendance/session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'stop'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('⏹️ Stopped', data.message, 'success');
+            updateAttendanceStats();
+        } else {
+            showNotification('❌ Error', 'Failed to stop attendance session', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error stopping attendance session:', error);
+        showNotification('❌ Error', 'Error stopping attendance session', 'error');
+    });
+}
+
+function markAttendance() {
+    const studentId = document.getElementById('student-id-input').value;
+    if (!studentId) {
+        showNotification('⚠️ Warning', 'Please enter a student ID', 'error');
+        return;
+    }
+    
+    markStudent(studentId);
+}
+
+function unmarkAttendance() {
+    const studentId = document.getElementById('student-id-input').value;
+    if (!studentId) {
+        showNotification('⚠️ Warning', 'Please enter a student ID', 'error');
+        return;
+    }
+    
+    unmarkStudent(studentId);
+}
+
+function markStudent(studentId) {
+    fetch('/api/attendance', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'mark', student_id: studentId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('✅ Success', data.message, 'success');
+            updateAttendanceStats();
+            document.getElementById('student-id-input').value = '';
+        } else {
+            showNotification('❌ Error', data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error marking attendance:', error);
+        showNotification('❌ Error', 'Error marking attendance', 'error');
+    });
+}
+
+function unmarkStudent(studentId) {
+    fetch('/api/attendance', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'unmark', student_id: studentId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('✅ Success', data.message, 'success');
+            updateAttendanceStats();
+            document.getElementById('student-id-input').value = '';
+        } else {
+            showNotification('❌ Error', data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error unmarking attendance:', error);
+        showNotification('❌ Error', 'Error unmarking attendance', 'error');
+    });
+}
+
+function exportAttendance() {
+    fetch('/api/export?type=attendance')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('📊 Exported', 'Attendance report exported: ' + data.filename, 'success');
+            } else {
+                showNotification('❌ Error', 'Failed to export attendance report', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error exporting attendance:', error);
+            showNotification('❌ Error', 'Error exporting attendance report', 'error');
+        });
+}
+
+// Update stats every 5 seconds
+setInterval(updateAttendanceStats, 5000);
+
+// Initial load
+updateAttendanceStats();
+{% endblock %}

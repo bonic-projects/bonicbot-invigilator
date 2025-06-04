@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Student Management - Exam System{% endblock %}
+
+{% block nav_students %}active{% endblock %}
+
+{% block extra_css %}
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #555;
+}
+
+.form-group input, .form-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.photo-upload {
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.photo-upload:hover {
+    border-color: #4CAF50;
+    background: #f8fff8;
+}
+
+.photo-upload.dragover {
+    border-color: #4CAF50;
+    background: #f0fff0;
+}
+
+.students-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.students-table th,
+.students-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.students-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.students-table tr:hover {
+    background: #f5f5f5;
+}
+
+.student-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.search-bar {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .form-grid { grid-template-columns: 1fr; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>👥 Student Management</h1>
+    <p>Register and manage student profiles for face recognition</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="total-students" style="color: #3498db;">0</div>
+        <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="active-students" style="color: #4CAF50;">0</div>
+        <div class="stat-label">Active Students</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="recognition-accuracy" style="color: #9b59b6;">0%</div>
+        <div class="stat-label">Recognition Accuracy</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="encodings-loaded" style="color: #e67e22;">0</div>
+        <div class="stat-label">Face Encodings Loaded</div>
+    </div>
+</div>
+
+<div class="section">
+    <h3>Register New Student</h3>
+    <button class="btn btn-primary" onclick="openRegistrationModal()">
+        <i class="fas fa-user-plus"></i> Add New Student
+    </button>
+</div>
+
+<div class="section">
+    <h3>Student Directory</h3>
+    <input type="text" class="search-bar" id="search-students" placeholder="Search students by ID, name, or course...">
+    
+    <div id="students-list">
+        <p style="text-align: center; padding: 20px; color: #666;">Loading students...</p>
+    </div>
+</div>
+
+<!-- Registration Modal -->
+<div id="registration-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeRegistrationModal()">&times;</span>
+        <h2>Register New Student</h2>
+        
+        <form id="registration-form" enctype="multipart/form-data">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="student-id">Student ID *</label>
+                    <input type="text" id="student-id" name="student_id" required>
+                </div>
+                <div class="form-group">
+                    <label for="first-name">First Name *</label>
+                    <input type="text" id="first-name" name="first_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="last-name">Last Name *</label>
+                    <input type="text" id="last-name" name="last_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
+                <div class="form-group">
+                    <label for="course">Course</label>
+                    <input type="text" id="course" name="course">
+                </div>
+                <div class="form-group">
+                    <label for="semester">Semester</label>
+                    <input type="text" id="semester" name="semester">
+                </div>
+            </div>
+            
+            <div class="form-group full-width">
+                <label>Student Photo *</label>
+                <div class="photo-upload" onclick="document.getElementById('photo-input').click()">
+                    <i class="fas fa-camera" style="font-size: 48px; color: #ddd; margin-bottom: 10px;"></i>
+                    <p>Click to upload or drag and drop photo</p>
+                    <p style="font-size: 12px; color: #666;">JPEG, PNG files only. Max 16MB.</p>
+                    <input type="file" id="photo-input" name="photo" accept="image/*" style="display: none;" required>
+                </div>
+                <div id="photo-preview" style="margin-top: 10px; text-align: center;"></div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Register Student
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeRegistrationModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+let allStudents = [];
+
+function openRegistrationModal() {
+    document.getElementById('registration-modal').style.display = 'block';
+}
+
+function closeRegistrationModal() {
+    document.getElementById('registration-modal').style.display = 'none';
+    document.getElementById('registration-form').reset();
+    document.getElementById('photo-preview').innerHTML = '';
+}
+
+function loadStudents() {
+    fetch('/api/students')
+        .then(response => response.json())
+        .then(data => {
+            allStudents = data.students || [];
+            updateStudentsStats();
+            displayStudents(allStudents);
+        })
+        .catch(error => {
+            console.error('Error loading students:', error);
+            document.getElementById('students-list').innerHTML = 
+                '<p style="text-align: center; color: #e74c3c;">Error loading students</p>';
+        });
+}
+
+function updateStudentsStats() {
+    const activeStudents = allStudents.filter(s => s.is_active).length;
+    
+    document.getElementById('total-students').textContent = allStudents.length;
+    document.getElementById('active-students').textContent = activeStudents;
+    
+    fetch('/api/system')
+        .then(response => response.json())
+        .then(data => {
+            const dbStats = data.database_stats || {};
+            document.getElementById('recognition-accuracy').textContent = 
+                (dbStats.average_recognition_confidence * 100 || 0).toFixed(0) + '%';
+            document.getElementById('encodings-loaded').textContent = 
+                dbStats.face_encodings_loaded || 0;
+        })
+        .catch(error => console.error('Error loading system stats:', error));
+}
+
+function displayStudents(students) {
+    const listDiv = document.getElementById('students-list');
+    
+    if (!students || students.length === 0) {
+        listDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No students registered yet.</p>';
+        return;
+    }
+    
+    const tableHTML = `
+        <table class="students-table">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                    <th>Course</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${students.map(student => `
+                    <tr>
+                        <td>
+                            ${student.photo_path ? 
+                                `<img src="/screenshots/${student.photo_path.split('/').pop()}" class="student-photo" alt="Photo">` :
+                                '<i class="fas fa-user-circle" style="font-size: 40px; color: #ddd;"></i>'
+                            }
+                        </td>
+                        <td><strong>${student.student_id}</strong></td>
+                        <td>${student.first_name} ${student.last_name}</td>
+                        <td>${student.course || 'N/A'}</td>
+                        <td>${student.email || 'N/A'}</td>
+                        <td>${student.phone || 'N/A'}</td>
+                        <td>
+                            <span style="color: ${student.is_active ? '#4CAF50' : '#f44336'};">
+                                ${student.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="editStudent('${student.student_id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="deleteStudent('${student.student_id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    listDiv.innerHTML = tableHTML;
+}
+
+function searchStudents() {
+    const searchTerm = document.getElementById('search-students').value.toLowerCase();
+    const filteredStudents = allStudents.filter(student => 
+        student.student_id.toLowerCase().includes(searchTerm) ||
+        student.first_name.toLowerCase().includes(searchTerm) ||
+        student.last_name.toLowerCase().includes(searchTerm) ||
+        (student.course || '').toLowerCase().includes(searchTerm)
+    );
+    displayStudents(filteredStudents);
+}
+
+function editStudent(studentId) {
+    showNotification('ℹ️ Info', 'Edit functionality would open a modal to edit student: ' + studentId, 'info');
+}
+
+function deleteStudent(studentId) {
+    if (confirm('Are you sure you want to delete this student? This action cannot be undone.')) {
+        fetch(`/api/students/${studentId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('✅ Success', 'Student deleted successfully', 'success');
+                loadStudents();
+            } else {
+                showNotification('❌ Error', data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting student:', error);
+            showNotification('❌ Error', 'Error deleting student', 'error');
+        });
+    }
+}
+
+// Handle photo preview
+document.getElementById('photo-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photo-preview').innerHTML = 
+                `<img src="${e.target.result}" style="max-width: 200px; max-height: 200px; border-radius: 10px;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Handle drag and drop
+const photoUpload = document.querySelector('.photo-upload');
+photoUpload.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('dragover');
+});
+
+photoUpload.addEventListener('dragleave', function(e) {
+    this.classList.remove('dragover');
+});
+
+photoUpload.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        document.getElementById('photo-input').files = files;
+        document.getElementById('photo-input').dispatchEvent(new Event('change'));
+    }
+});
+
+// Handle form submission
+document.getElementById('registration-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/api/students', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('✅ Success', data.message, 'success');
+            closeRegistrationModal();
+            loadStudents();
+        } else {
+            showNotification('❌ Error', data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error registering student:', error);
+        showNotification('❌ Error', 'Error registering student', 'error');
+    });
+});
+
+// Search functionality
+document.getElementById('search-students').addEventListener('input', searchStudents);
+
+// Close modal when clicking outside
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('registration-modal');
+    if (e.target === modal) {
+        closeRegistrationModal();
+    }
+});
+
+// Initial load
+loadStudents();
+{% endblock %}

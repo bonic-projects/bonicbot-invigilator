@@ -1,0 +1,486 @@
+# Robot Invigilator - .gitignore
+
+# =================================================================
+# Python
+# =================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+.pdm-python
+.pdm-build/
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+exam_monitor_env/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# =================================================================
+# Exam Monitor Specific - Sensitive Data
+# =================================================================
+
+# Database files (contain sensitive violation and student data)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+exam_violations.db*
+student_data.db*
+attendance.db*
+
+# Student photos and face encodings (GDPR/Privacy sensitive)
+students/
+students/photos/
+students/encodings/
+attendance_photos/
+*.pkl
+*_encoding.pkl
+
+# Screenshots and violation evidence
+screenshots/
+violation_*.jpg
+manual_screenshot_*.jpg
+attendance_*.jpg
+
+# Configuration files with sensitive data
+config_local.json
+config_production.json
+robot_config_local.json
+*_secret.json
+.secrets
+
+# Email configuration and credentials
+email_config.json
+smtp_credentials.txt
+
+# =================================================================
+# Logs and Temporary Files
+# =================================================================
+
+# System logs
+*.log
+*.log.*
+logs/
+robot_logs/
+exam_monitor.log*
+robot_invigilation.log*
+system_events.log*
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup files
+*.bak
+*.backup
+backup_*.db
+*_backup_*
+
+# Export files
+exports/
+reports/
+*.csv
+attendance_report_*.json
+violation_export_*.json
+invigilation_summary_*.json
+
+# =================================================================
+# Machine Learning Models and Cache
+# =================================================================
+
+# PyTorch model cache
+.cache/
+torch/
+~/.cache/torch/
+torch_cache/
+
+# YOLOv5 model downloads
+yolov5s.pt
+yolov5m.pt
+yolov5l.pt
+yolov5x.pt
+*.pt
+models/
+
+# Ultralytics cache
+runs/
+ultralytics_cache/
+
+# Face recognition model cache
+face_recognition_models/
+dlib_models/
+
+# OpenCV data
+haarcascades/
+
+# =================================================================
+# Hardware and System Specific
+# =================================================================
+
+# Raspberry Pi specific
+config.txt
+cmdline.txt
+
+# Camera test images
+test.jpg
+camera_test_*.jpg
+picamera_test.*
+
+# Robot test files
+robot_test_output.txt
+serial_test.log
+
+# System monitoring outputs
+system_stats.json
+performance_log.txt
+
+# =================================================================
+# Development and IDE
+# =================================================================
+
+# Visual Studio Code
+.vscode/
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Eclipse
+.project
+.pydevproject
+.metadata/
+
+# NetBeans
+nbproject/
+
+# =================================================================
+# Operating System
+# =================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# =================================================================
+# Documentation and Media
+# =================================================================
+
+# Compiled documentation
+docs/build/
+documentation/build/
+
+# Video/Audio files (if any test recordings)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wav
+*.mp3
+
+# Large images (except small icons)
+*.tiff
+*.tif
+*.bmp
+*.psd
+
+# =================================================================
+# Network and Deployment
+# =================================================================
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cert
+ssl/
+
+# Docker
+Dockerfile.local
+docker-compose.override.yml
+.dockerignore
+
+# Kubernetes
+k8s-local/
+*.kubeconfig
+
+# =================================================================
+# Uploads and User Data
+# =================================================================
+
+# Web uploads
+uploads/
+upload_temp/
+user_uploads/
+
+# Processed data
+processed/
+output/
+
+# =================================================================
+# Testing and Development
+# =================================================================
+
+# Test output
+test_output/
+test_results/
+*.test
+
+# Performance profiling
+*.prof
+profiling_results/
+
+# Debug dumps
+core
+*.core
+crash_reports/
+
+# =================================================================
+# Package Management
+# =================================================================
+
+# pip
+pip-wheel-metadata/
+
+# conda
+.conda/
+
+# =================================================================
+# Custom Patterns
+# =================================================================
+
+# Any file ending with _local or _dev
+*_local.*
+*_dev.*
+*_development.*
+
+# Any file starting with local_ or dev_
+local_*
+dev_*
+development_*
+
+# Sensitive configuration patterns
+*password*
+*secret*
+*private*
+*credential*
+
+# Robot position calibration data
+robot_calibration_*.json
+position_mapping_*.json
+
+# Student import/export files
+student_import_*.csv
+student_export_*.csv
+
+# Session archives
+session_archive_*/
+archived_sessions/
+
+# =================================================================
+# Keep These Files (Override previous rules)
+# =================================================================
+
+# Keep example configuration files
+!config.example.json
+!robot_config.example.json
+
+# Keep sample student data for testing
+!sample_data/
+!test_data/
+
+# Keep documentation images
+!docs/images/
+!README_images/
+
+# Keep requirements files
+!requirements*.txt
+
+# Keep shell scripts
+!*.sh
+
+# Keep GitHub workflow files
+!.github/
