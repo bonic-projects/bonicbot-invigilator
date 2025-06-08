@@ -6,8 +6,47 @@ A basic movement pattern that students can easily modify
 
 import time
 import logging
+from bonicbot import create_serial_controller
 
 logger = logging.getLogger(__name__)
+
+
+def move_to_next_student(robot_controller, delay_func):
+    """
+    Move to the next student position and perform a head scan.
+    
+    Args:
+        robot_controller: BonicBot controller instance
+        delay_func: Function to handle delays with stop checking
+    """
+    logger.info("Moving to next student position")
+    
+    # Move forward for 3 seconds
+    robot_controller.move_forward(speed=30)
+    if not delay_func(10.0):
+        return False
+    
+    # Stop movement
+    robot_controller.stop()
+    if not delay_func(3.0):
+        return False
+    
+    # Perform head scan
+    robot_controller.control_head(pan_angle=90, pan_speed=800)
+    if not delay_func(8.0):
+        return False
+    
+    
+    robot_controller.control_head(pan_angle=-90, pan_speed=800)
+    if not delay_func(10.0):
+        return False
+    
+    robot_controller.control_head(pan_angle=0, pan_speed=800)
+    if not delay_func(2.0):
+        return False
+    
+    return True
+    
 
 def RunSequence(robot_controller, delay_func):
     """
@@ -24,11 +63,11 @@ def RunSequence(robot_controller, delay_func):
     try:
         # Initialize robot position
         robot_controller.stop()
-        delay_func(1.0)
+        delay_func(3.0)
         
         # Reset head to center position
-        robot_controller.control_head(pan_angle=0, tilt_angle=0)
-        delay_func(2.0)
+        robot_controller.control_head(pan_angle=0, tilt_angle=0, pan_speed=800)
+        delay_func(3.0)
         
         # Main invigilation loop
         sequence_count = 0
@@ -36,92 +75,39 @@ def RunSequence(robot_controller, delay_func):
         while True:
             sequence_count += 1
             logger.info(f"Starting patrol sequence #{sequence_count}")
-            
             # === STUDENTS CAN MODIFY THE MOVEMENTS BELOW ===
             
-            # Step 1: Look left and right from starting position
-            logger.info("Step 1: Initial scanning")
-            robot_controller.control_head(pan_angle=-45, tilt_angle=0)  # Look left
-            if not delay_func(2.0):
+            #first row
+            move_to_next_student(robot_controller, delay_func)
+            
+            #second row
+            move_to_next_student(robot_controller, delay_func)
+            
+            robot_controller.move_forward(speed=30)
+            if not delay_func(10.0):
                 break
             
-            robot_controller.control_head(pan_angle=45, tilt_angle=0)   # Look right  
-            if not delay_func(2.0):
-                break
-                
-            robot_controller.control_head(pan_angle=0, tilt_angle=0)    # Look center
-            if not delay_func(1.0):
+            robot_controller.turn_left(speed=30)                       # Turn left
+            if not delay_func(3.5):
                 break
             
-            # Step 2: Move forward while looking around
-            logger.info("Step 2: Forward patrol")
-            robot_controller.move_forward(speed=40)                     # Move slowly forward
-            if not delay_func(3.0):
+            #second row
+            move_to_next_student(robot_controller, delay_func)
+            
+            #first row
+            move_to_next_student(robot_controller, delay_func)
+            
+            
+            robot_controller.move_forward(speed=30)
+            if not delay_func(10.0):
                 break
             
-            robot_controller.stop()                                     # Stop moving
-            if not delay_func(1.0):
+            robot_controller.turn_right(speed=30)                       # Turn right
+            if not delay_func(3.5):
                 break
             
-            # Look around while stopped
-            robot_controller.control_head(pan_angle=-60, tilt_angle=0)  # Look far left
-            if not delay_func(2.0):
-                break
-                
-            robot_controller.control_head(pan_angle=60, tilt_angle=0)   # Look far right
-            if not delay_func(2.0):
-                break
-                
-            robot_controller.control_head(pan_angle=0, tilt_angle=0)    # Return to center
-            if not delay_func(1.0):
-                break
-            
-            # Step 3: Turn to scan different area
-            logger.info("Step 3: Turn and scan")
-            robot_controller.turn_left(speed=50)                        # Turn left
-            if not delay_func(1.5):
-                break
-            
-            robot_controller.stop()                                     # Stop turning
-            if not delay_func(0.5):
-                break
-            
-            # Scan the new area
-            robot_controller.control_head(pan_angle=-30, tilt_angle=0)
-            if not delay_func(1.5):
-                break
-                
-            robot_controller.control_head(pan_angle=30, tilt_angle=0)
-            if not delay_func(1.5):
-                break
-                
-            robot_controller.control_head(pan_angle=0, tilt_angle=0)
-            if not delay_func(1.0):
-                break
-            
-            # Step 4: Move to new position
-            logger.info("Step 4: Move to new position")
-            robot_controller.move_forward(speed=45)                     # Move forward again
-            if not delay_func(2.5):
-                break
-            
-            robot_controller.stop()                                     # Stop
-            if not delay_func(1.0):
-                break
-            
-            # Step 5: Final comprehensive scan
-            logger.info("Step 5: 360-degree scan")
-            robot_controller.turn_right(speed=50)                       # Slow 360-degree turn
-            if not delay_func(3.0):
-                break
-            
-            robot_controller.stop()                                     # Stop turning
-            if not delay_func(1.0):
-                break
-            
-            # Return head to center
-            robot_controller.control_head(pan_angle=0, tilt_angle=0)
-            if not delay_func(1.0):
+            robot_controller.stop()  # Stop moving
+            if not delay_func(4):
                 break
             
             # === END OF STUDENT MODIFIABLE SECTION ===
@@ -154,3 +140,17 @@ def RunSequence(robot_controller, delay_func):
 # 8. Add arm movements using control_left_hand() or control_right_hand()
 #
 # Remember: Always use delay_func() instead of time.sleep() for proper stopping!
+
+def delay(seconds):
+    time.sleep(seconds)
+    return True
+
+def main():
+    serial_port = "/dev/ttyAMA0"
+    baudrate = 9600
+    robot_controller = create_serial_controller(serial_port, baudrate)
+    RunSequence(robot_controller, delay)
+    robot_controller.close()
+
+if __name__ == '__main__':
+    main()
