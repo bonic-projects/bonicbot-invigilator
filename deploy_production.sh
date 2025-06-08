@@ -84,9 +84,14 @@ fi
 
 # Pull latest changes only if there are new commits
 if [ "$NEW_COMMITS" = true ]; then
-    print_status "Pulling latest changes from production branch..."
-    if ! git pull origin production; then
-        print_error "Failed to pull latest changes from production branch."
+    print_status "Forcibly resetting to latest remote production branch..."
+    if ! git fetch origin; then
+        print_error "Failed to fetch from remote repository."
+        exit 1
+    fi
+
+    if ! git reset --hard origin/production; then
+        print_error "Failed to hard reset to origin/production."
         exit 1
     fi
 
