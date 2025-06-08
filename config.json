@@ -21,6 +21,38 @@
         "attendance_timeout": 1800,
         "duplicate_detection_window": 60
     },
+    "robot": {
+        "enabled": true,
+        "serial_port": "/dev/ttyAMA0",
+        "baudrate": 9600,
+        "connection_timeout": 5.0,
+        "command_delay": 0.1,
+        "movement_speeds": {
+            "default_forward": 40,
+            "default_turn": 50,
+            "slow_speed": 25,
+            "fast_speed": 70
+        },
+        "head_control": {
+            "pan_range": [-180, 180],
+            "tilt_range": [-30, 30],
+            "default_speed": 50
+        },
+        "invigilation": {
+            "sequence_interval": 30,
+            "patrol_duration": 300,
+            "scan_pause_duration": 2.0,
+            "violation_response_enabled": true,
+            "emergency_stop_enabled": true,
+            "stealth_mode": false
+        },
+        "safety": {
+            "max_continuous_movement": 10.0,
+            "collision_detection": false,
+            "safe_zone_radius": 1.0,
+            "emergency_stop_pin": null
+        }
+    },
     "alerts": {
         "email_enabled": false,
         "email_smtp": "smtp.gmail.com",
@@ -30,7 +62,8 @@
         "email_to": "supervisor@school.edu",
         "sound_alerts": true,
         "attendance_alerts": true,
-        "violation_alerts": true
+        "violation_alerts": true,
+        "robot_alerts": true
     },
     "model": {
         "yolo_model": "yolov5m",
@@ -43,19 +76,23 @@
         "port": 5000,
         "debug": false,
         "upload_folder": "uploads",
-        "max_file_size": 16777216
+        "max_file_size": 16777216,
+        "robot_control_enabled": true,
+        "robot_video_stream": true
     },
     "monitoring": {
         "alert_cooldown": 30,
         "screenshot_quality": 90,
         "log_level": "INFO",
         "session_timeout": 3600,
-        "auto_cleanup_days": 30
+        "auto_cleanup_days": 30,
+        "robot_integration": true
     },
     "database": {
         "backup_interval": 86400,
         "max_backup_files": 7,
-        "vacuum_interval": 604800
+        "vacuum_interval": 604800,
+        "robot_logs_enabled": true
     },
     "face_recognition": {
         "tolerance": 0.6,
@@ -69,13 +106,15 @@
         "session_timeout": 1800,
         "require_https": false,
         "allowed_file_types": ["jpg", "jpeg", "png"],
-        "max_students": 1000
+        "max_students": 1000,
+        "robot_access_control": true
     },
     "storage": {
         "photos_directory": "students/photos",
         "encodings_directory": "students/encodings",
         "attendance_photos_directory": "attendance_photos",
         "screenshots_directory": "screenshots",
-        "logs_directory": "logs"
+        "logs_directory": "logs",
+        "robot_logs_directory": "logs/robot"
     }
 }
