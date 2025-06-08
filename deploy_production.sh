@@ -93,6 +93,9 @@ if [ "$NEW_COMMITS" = true ]; then
     # Show current commit info
     print_status "Updated to commit: $(git log -1 --pretty=format:'%h - %s (%an, %ar)')"
 
+    rm -r exam_monitor || true  # Remove old exam_monitor directory if it exists
+    print_status "Removed old exam_monitor directory if it existed."
+
     # Make install script executable
     print_status "Making install_script.sh executable..."
     chmod +x install_script.sh
