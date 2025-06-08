@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Exam Monitoring System - Main Application
-Orchestrates all modules for comprehensive exam proctoring, attendance tracking, and robot invigilation
+Orchestrates all modules for comprehensive exam proctoring and attendance tracking
+Enhanced with Robot Invigilator functionality
 """
 
 import sys
@@ -22,7 +23,7 @@ try:
     from web_server import WebServer
     from student_manager import StudentManager
     from attendance_manager import AttendanceManager
-    from robot_controller import RobotInvigilator
+    from robot_controller import RobotInvigilator  # NEW: Robot integration
 except ImportError as e:
     print(f"Error importing modules: {e}")
     print("Make sure all module files are in the same directory as exam_monitor.py")
@@ -32,7 +33,7 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 class ExamMonitoringSystem:
-    """Main exam monitoring system with robot invigilation capabilities"""
+    """Main exam monitoring system that orchestrates all modules including robot invigilator"""
     
     def __init__(self, config_file='config.json', web_mode=False):
         self.web_mode = web_mode
@@ -56,8 +57,9 @@ class ExamMonitoringSystem:
         self.student_manager = None
         self.attendance_manager = None
         
-        # Initialize robot components
+        # Initialize robot components (NEW)
         self.robot_invigilator = None
+        self.robot_enabled = False
         
         # Threading
         self.monitoring_thread = None
@@ -74,7 +76,7 @@ class ExamMonitoringSystem:
         self._initialize_components()
     
     def _initialize_components(self):
-        """Initialize all system components including robot controller"""
+        """Initialize all system components"""
         try:
             logger.info("Initializing Enhanced Exam Monitoring System with Robot Support...")
             
@@ -91,17 +93,6 @@ class ExamMonitoringSystem:
                 self.config_manager
             )
             
-            # Initialize robot invigilator
-            try:
-                self.robot_invigilator = RobotInvigilator(
-                    exam_monitor_system=self,
-                    config_file='robot_config.json'
-                )
-                logger.info("Robot invigilator initialized successfully")
-            except Exception as e:
-                logger.warning(f"Robot invigilator initialization failed: {e}")
-                self.robot_invigilator = None
-            
             # Initialize camera
             self.camera_manager = CameraManager(self.config_manager)
             if not self.camera_manager.initialize_camera():
@@ -115,14 +106,21 @@ class ExamMonitoringSystem:
             # Connect attendance manager to detection engine
             self.detection_engine.set_attendance_manager(self.attendance_manager)
             
+            # Initialize robot invigilator (NEW)
+            try:
+                self.robot_invigilator = RobotInvigilator(self)
+                self.robot_enabled = True
+                logger.info("Robot invigilator initialized successfully")
+            except Exception as e:
+                logger.warning(f"Robot invigilator initialization failed: {e}")
+                self.robot_enabled = False
+                self.robot_invigilator = None
+            
             # Initialize web server if in web mode
             if self.web_mode:
                 self.web_server = WebServer(self, self.config_manager)
-                # Connect robot invigilator to web server
-                if self.robot_invigilator:
-                    self.web_server.set_robot_invigilator(self.robot_invigilator)
             
-            logger.info("All components initialized successfully with robot support")
+            logger.info("All components initialized successfully")
             
         except Exception as e:
             logger.error(f"Failed to initialize components: {e}")
@@ -260,10 +258,6 @@ class ExamMonitoringSystem:
                         self.toggle_attendance_mode()
                     elif key == ord('s'):  # Take screenshot
                         self.capture_screenshot(f"manual_screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg")
-                    elif key == ord('r'):  # Robot emergency stop
-                        if self.robot_invigilator:
-                            self.robot_invigilator.emergency_stop()
-                            print("Robot emergency stop activated!")
                 
                 # Small delay to prevent excessive CPU usage
                 time.sleep(0.033)  # ~30 FPS
@@ -349,7 +343,7 @@ class ExamMonitoringSystem:
             stats = self.system_monitor.get_system_stats()
             if stats:
                 overlay_text = f"CPU: {stats['cpu_percent']}% | RAM: {stats['memory_percent']}% | Temp: {stats['temperature']}°C"
-                cv2.putText(frame, overlay_text, (10, frame.shape[0]-100), 
+                cv2.putText(frame, overlay_text, (10, frame.shape[0]-80), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
             
             # Add session info
@@ -357,21 +351,17 @@ class ExamMonitoringSystem:
                 attendance_status = self.attendance_manager.get_current_attendance_status()
                 present_count = attendance_status.get('students_marked_present', 0)
                 cv2.putText(frame, f"Students Present: {present_count}", 
-                           (10, frame.shape[0]-80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                           (10, frame.shape[0]-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
             else:
                 cv2.putText(frame, f"Total Violations: {self.violation_count}", 
-                           (10, frame.shape[0]-80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                           (10, frame.shape[0]-60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
             
-            # Add robot status
-            if self.robot_invigilator:
-                robot_status = self.robot_invigilator.get_status()
-                if robot_status['is_invigilating']:
-                    robot_text = f"Robot: Position {robot_status['current_position']}"
-                    cv2.putText(frame, robot_text, (10, frame.shape[0]-60), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 1)
-                elif robot_status['robot_connected']:
-                    cv2.putText(frame, "Robot: Connected", (10, frame.shape[0]-60), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            # Add robot status (NEW)
+            if self.robot_enabled and self.robot_invigilator:
+                robot_status = "Robot: " + ("Active" if self.robot_invigilator.is_invigilating else "Ready")
+                color = (0, 255, 0) if self.robot_invigilator.is_connected else (0, 0, 255)
+                cv2.putText(frame, robot_status, (10, frame.shape[0]-100), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
             
             # Add timestamp
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -388,7 +378,55 @@ class ExamMonitoringSystem:
             logger.error(f"Error adding system overlay: {e}")
             return frame
     
-    # API methods for web interface (keep existing methods)
+    # Robot API methods (NEW)
+    def connect_robot(self):
+        """Connect to the robot"""
+        if not self.robot_enabled or not self.robot_invigilator:
+            return False, "Robot not available"
+        return self.robot_invigilator.connect_robot()
+    
+    def disconnect_robot(self):
+        """Disconnect from the robot"""
+        if self.robot_invigilator:
+            self.robot_invigilator.disconnect_robot()
+    
+    def start_invigilation_sequence(self):
+        """Start robot invigilation sequence"""
+        if not self.robot_enabled or not self.robot_invigilator:
+            return False, "Robot not available"
+        return self.robot_invigilator.start_invigilation_sequence()
+    
+    def stop_invigilation_sequence(self):
+        """Stop robot invigilation sequence"""
+        if self.robot_invigilator:
+            self.robot_invigilator.stop_invigilation_sequence()
+    
+    def test_robot_connection(self):
+        """Test robot connection"""
+        if not self.robot_enabled or not self.robot_invigilator:
+            return False, "Robot not available"
+        return self.robot_invigilator.test_robot_connection()
+    
+    def emergency_stop_robot(self):
+        """Emergency stop robot"""
+        if self.robot_invigilator:
+            self.robot_invigilator.emergency_stop()
+    
+    def get_robot_status(self):
+        """Get robot status"""
+        if not self.robot_enabled or not self.robot_invigilator:
+            return {
+                'robot_enabled': False,
+                'robot_available': False,
+                'error': 'Robot not available'
+            }
+        
+        status = self.robot_invigilator.get_status()
+        status['robot_enabled'] = self.robot_enabled
+        status['robot_available'] = True
+        return status
+    
+    # Existing API methods (keeping all original methods)
     def is_monitoring_active(self) -> bool:
         """Check if monitoring is active"""
         return self.monitoring_active
@@ -462,7 +500,7 @@ class ExamMonitoringSystem:
             return self.database_manager.export_data(export_path, session_id=session_id)
         return False
     
-    # Attendance-specific API methods (keep existing methods)
+    # Attendance-specific API methods (keeping all original methods)
     def register_student(self, student_data, photo_file):
         """Register a new student"""
         if self.student_manager:
@@ -544,61 +582,18 @@ class ExamMonitoringSystem:
             return self.student_manager.delete_student(student_id)
         return False
     
-    # Robot-specific API methods
-    def get_robot_status(self):
-        """Get robot status"""
-        if self.robot_invigilator:
-            return self.robot_invigilator.get_status()
-        return {'robot_connected': False, 'is_invigilating': False, 'error': 'Robot not available'}
-    
-    def connect_robot(self):
-        """Connect to robot"""
-        if self.robot_invigilator:
-            return self.robot_invigilator.connect_robot()
-        return False, "Robot controller not available"
-    
-    def disconnect_robot(self):
-        """Disconnect robot"""
-        if self.robot_invigilator:
-            self.robot_invigilator.disconnect_robot()
-            return True, "Robot disconnected"
-        return False, "Robot controller not available"
-    
-    def start_robot_invigilation(self):
-        """Start robot invigilation sequence"""
-        if self.robot_invigilator:
-            return self.robot_invigilator.start_invigilation_sequence()
-        return False, "Robot controller not available"
-    
-    def stop_robot_invigilation(self):
-        """Stop robot invigilation sequence"""
-        if self.robot_invigilator:
-            self.robot_invigilator.stop_invigilation_sequence()
-            return True, "Robot invigilation stopped"
-        return False, "Robot controller not available"
-    
-    def robot_emergency_stop(self):
-        """Emergency stop robot"""
-        if self.robot_invigilator:
-            self.robot_invigilator.emergency_stop()
-            return True, "Robot emergency stop activated"
-        return False, "Robot controller not available"
-    
     def cleanup(self):
-        """Clean up all resources including robot"""
+        """Clean up all resources"""
         logger.info("Cleaning up system resources...")
         
         # Stop monitoring
         self.stop_monitoring()
         
-        # Cleanup robot
+        # Stop robot if active (NEW)
         if self.robot_invigilator:
-            try:
-                self.robot_invigilator.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up robot: {e}")
+            self.robot_invigilator.cleanup()
         
-        # Cleanup other components
+        # Cleanup components
         if self.camera_manager:
             self.camera_manager.cleanup()
         
@@ -616,7 +611,7 @@ class ExamMonitoringSystem:
             logger.error("Web server not initialized")
             return
         
-        logger.info("Starting web server with robot invigilation support...")
+        logger.info("Starting web server with robot invigilator support...")
         self.web_server.start_server(host, port)
     
     def run_regular_mode(self, attendance_mode=False):
@@ -625,40 +620,31 @@ class ExamMonitoringSystem:
         logger.info(f"Starting regular mode for {mode_text}...")
         
         if not self.web_mode:
-            print("\n" + "="*70)
-            print("EXAM MONITORING SYSTEM WITH ROBOT INVIGILATION - CONTROLS")
-            print("="*70)
+            print("\n" + "="*60)
+            print("EXAM MONITORING SYSTEM - CONTROLS")
+            print("="*60)
             print("• Press 'q' to quit")
             print("• Press 'a' to toggle attendance mode")
             print("• Press 's' to take screenshot")
-            print("• Press 'r' to emergency stop robot")
-            print("="*70)
+            print("="*60)
             if attendance_mode:
                 print("🎓 ATTENDANCE MODE: Tracking student presence")
             else:
                 print("👁️  MONITORING MODE: Detecting violations")
-            
-            if self.robot_invigilator:
-                robot_status = self.robot_invigilator.get_status()
-                if robot_status['robot_connected']:
-                    print("🤖 ROBOT STATUS: Connected and ready")
-                else:
-                    print("🤖 ROBOT STATUS: Not connected")
-            
-            print("="*70 + "\n")
+            if self.robot_enabled:
+                print("🤖 ROBOT: Available for invigilation")
+            print("="*60 + "\n")
         
         self.start_monitoring(attendance_mode=attendance_mode)
 
 def main():
     """Main function"""
-    parser = argparse.ArgumentParser(description='Exam Monitoring System with Robot Invigilation')
+    parser = argparse.ArgumentParser(description='Exam Monitoring System with Robot Invigilator')
     parser.add_argument('--web', action='store_true', help='Run in web mode with Flask server')
     parser.add_argument('--attendance', action='store_true', help='Start in attendance mode')
-    parser.add_argument('--robot', action='store_true', help='Enable robot functionality (requires robot connection)')
     parser.add_argument('--host', default='0.0.0.0', help='Web server host (default: 0.0.0.0)')
     parser.add_argument('--port', type=int, default=5000, help='Web server port (default: 5000)')
     parser.add_argument('--config', default='config.json', help='Configuration file path')
-    parser.add_argument('--robot-config', default='robot_config.json', help='Robot configuration file path')
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
                        help='Logging level (default: INFO)')
     
@@ -672,11 +658,11 @@ def main():
     
     try:
         if args.web:
-            logger.info("Starting Exam Monitoring System in Web Mode with Robot Support")
+            logger.info("Starting Exam Monitoring System with Robot Invigilator in Web Mode")
             system = ExamMonitoringSystem(config_file=args.config, web_mode=True)
             system.run_web_mode(host=args.host, port=args.port)
         else:
-            logger.info("Starting Exam Monitoring System in Regular Mode with Robot Support")
+            logger.info("Starting Exam Monitoring System with Robot Invigilator in Regular Mode")
             system = ExamMonitoringSystem(config_file=args.config, web_mode=False)
             system.run_regular_mode(attendance_mode=args.attendance)
         
