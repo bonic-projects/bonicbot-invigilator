@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Enhanced Web Server for Exam Monitoring System
-Flask-based web interface with complete robot invigilation control
+Web Server for Exam Monitoring System
+Flask-based web interface for remote monitoring, control, and attendance management
+Enhanced with Robot Invigilator control
 """
 
 import cv2
@@ -25,7 +26,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class WebServer:
-    """Enhanced Flask web server with complete robot control functionality"""
+    """Flask web server for remote monitoring, attendance management, and robot control"""
     
     def __init__(self, monitoring_system, config_manager):
         self.monitoring_system = monitoring_system
@@ -45,23 +46,15 @@ class WebServer:
         self.upload_folder = 'uploads'
         Path(self.upload_folder).mkdir(exist_ok=True)
         
-        # Robot controller will be injected by monitoring system
-        self.robot_invigilator = None
-        
         if FLASK_AVAILABLE:
             self.setup_flask_app()
         else:
             logger.error("Flask not available - web server disabled")
     
-    def set_robot_invigilator(self, robot_invigilator):
-        """Set the robot invigilator instance"""
-        self.robot_invigilator = robot_invigilator
-        logger.info("Robot invigilator integrated with web server")
-    
     def setup_flask_app(self):
         """Setup Flask web application"""
         self.app = Flask(__name__)
-        self.app.secret_key = 'exam_monitor_robot_secret_key_change_in_production'
+        self.app.secret_key = 'exam_monitor_secret_key_change_in_production'
         
         # Configure Flask
         self.app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -69,14 +62,10 @@ class WebServer:
         
         # Setup routes
         self._setup_routes()
-        
-        # Create templates
-        self._create_templates()
     
     def _setup_routes(self):
-        """Setup Flask routes with complete robot functionality"""
+        """Setup Flask routes"""
         
-        # Main pages
         @self.app.route('/')
         def index():
             return render_template('index.html')
@@ -93,32 +82,20 @@ class WebServer:
         def reports():
             return render_template('reports.html')
         
-        @self.app.route('/robot')
-        def robot_control():
-            return render_template('robot.html')
-        
         @self.app.route('/video_feed')
         def video_feed():
             return Response(self._generate_frames(),
                           mimetype='multipart/x-mixed-replace; boundary=frame')
         
-        # Enhanced System Status API
         @self.app.route('/api/status')
         def api_status():
-            """Get comprehensive system status including robot status"""
+            """Get system status"""
             try:
                 system_stats = self.monitoring_system.get_system_stats()
                 camera_info = self.monitoring_system.get_camera_info()
                 detection_stats = self.monitoring_system.get_detection_stats()
                 attendance_status = self.monitoring_system.get_attendance_status()
-                
-                # Get comprehensive robot status
-                robot_status = {}
-                if self.robot_invigilator:
-                    robot_status = self.robot_invigilator.get_status()
-                    # Add real-time invigilation details
-                    if robot_status.get('is_invigilating'):
-                        robot_status['real_time_progress'] = self._get_invigilation_progress()
+                robot_status = self.monitoring_system.get_robot_status()  # NEW
                 
                 return jsonify({
                     'monitoring_active': self.monitoring_system.is_monitoring_active(),
@@ -131,307 +108,42 @@ class WebServer:
                     'camera_info': camera_info,
                     'detection_stats': detection_stats,
                     'attendance_status': attendance_status,
-                    'robot_status': robot_status,
+                    'robot_status': robot_status,  # NEW
                     'timestamp': datetime.now().isoformat()
                 })
             except Exception as e:
                 logger.error(f"Error getting status: {e}")
                 return jsonify({'error': str(e)}), 500
-
-        # === ENHANCED ROBOT CONTROL APIs ===
         
-        @self.app.route('/api/robot/connect', methods=['POST'])
-        def api_robot_connect():
-            """Connect to robot with enhanced error reporting"""
+        @self.app.route('/api/violations')
+        def api_violations():
+            """Get violations data"""
             try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
+                limit = request.args.get('limit', 50, type=int)
+                offset = request.args.get('offset', 0, type=int)
+                session_id = request.args.get('session_id')
+                violation_type = request.args.get('type')
+                realtime = request.args.get('realtime', 'false').lower() == 'true'
                 
-                success, message = self.robot_invigilator.connect_robot()
-                return jsonify({
-                    'success': success, 
-                    'message': message,
-                    'robot_status': self.robot_invigilator.get_status() if success else None
-                })
-                
-            except Exception as e:
-                logger.error(f"Error connecting robot: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/disconnect', methods=['POST'])
-        def api_robot_disconnect():
-            """Disconnect robot"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
-                
-                self.robot_invigilator.disconnect_robot()
-                return jsonify({'success': True, 'message': 'Robot disconnected successfully'})
-                
-            except Exception as e:
-                logger.error(f"Error disconnecting robot: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/test', methods=['POST'])
-        def api_robot_test():
-            """Test robot connection and movements"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
-                
-                success, message = self.robot_invigilator.test_robot_connection()
-                return jsonify({'success': success, 'message': message})
-                
-            except Exception as e:
-                logger.error(f"Error testing robot: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/invigilation/start', methods=['POST'])
-        def api_robot_start_invigilation():
-            """Start robot invigilation sequence"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
-                
-                success, message = self.robot_invigilator.start_invigilation_sequence()
-                
-                response_data = {
-                    'success': success, 
-                    'message': message
-                }
-                
-                if success:
-                    response_data['invigilation_details'] = {
-                        'total_positions': len(self.robot_invigilator.config.config.get('student_positions', [])),
-                        'detection_duration': self.robot_invigilator.config.config.get('detection_duration', 30),
-                        'estimated_duration': self._estimate_invigilation_duration()
-                    }
-                
-                return jsonify(response_data)
-                
-            except Exception as e:
-                logger.error(f"Error starting invigilation: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/invigilation/stop', methods=['POST'])
-        def api_robot_stop_invigilation():
-            """Stop robot invigilation sequence"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
-                
-                self.robot_invigilator.stop_invigilation_sequence()
-                return jsonify({
-                    'success': True, 
-                    'message': 'Invigilation sequence stopped',
-                    'final_status': self.robot_invigilator.get_status()
-                })
-                
-            except Exception as e:
-                logger.error(f"Error stopping invigilation: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/emergency_stop', methods=['POST'])
-        def api_robot_emergency_stop():
-            """Emergency stop robot - highest priority"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'success': False, 'message': 'Robot controller not available'}), 400
-                
-                self.robot_invigilator.emergency_stop()
-                return jsonify({
-                    'success': True, 
-                    'message': 'Emergency stop activated - all robot operations halted'
-                })
-                
-            except Exception as e:
-                logger.error(f"Error during emergency stop: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/config', methods=['GET', 'POST'])
-        def api_robot_config():
-            """Get or update robot configuration"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'error': 'Robot controller not available'}), 400
-                
-                if request.method == 'GET':
-                    config = self.robot_invigilator.config.config
-                    return jsonify({
-                        'config': config,
-                        'position_count': len(config.get('student_positions', [])),
-                        'estimated_duration': self._estimate_invigilation_duration()
-                    })
-                
-                elif request.method == 'POST':
-                    new_config = request.get_json()
-                    
-                    # Validate configuration
-                    validation_errors = self._validate_robot_config(new_config)
-                    if validation_errors:
-                        return jsonify({'success': False, 'errors': validation_errors}), 400
-                    
-                    self.robot_invigilator.config.update_config(new_config)
-                    return jsonify({
-                        'success': True, 
-                        'message': 'Robot configuration updated successfully',
-                        'updated_config': self.robot_invigilator.config.config
-                    })
-                    
-            except Exception as e:
-                logger.error(f"Error with robot config: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/positions', methods=['GET', 'POST', 'PUT', 'DELETE'])
-        def api_robot_positions():
-            """Manage robot movement positions"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'error': 'Robot controller not available'}), 400
-                
-                if request.method == 'GET':
-                    positions = self.robot_invigilator.config.config.get('student_positions', [])
-                    return jsonify({
-                        'positions': positions,
-                        'total_count': len(positions)
-                    })
-                
-                elif request.method == 'POST':
-                    # Add new position
-                    new_position = request.get_json()
-                    
-                    # Validate position data
-                    required_fields = ['name', 'forward_time', 'turn_angle', 'turn_time']
-                    for field in required_fields:
-                        if field not in new_position:
-                            return jsonify({'error': f'Missing required field: {field}'}), 400
-                    
-                    current_positions = self.robot_invigilator.config.config.get('student_positions', [])
-                    current_positions.append(new_position)
-                    
-                    self.robot_invigilator.config.update_config({'student_positions': current_positions})
-                    
-                    return jsonify({
-                        'success': True,
-                        'message': 'Position added successfully',
-                        'positions': current_positions
-                    })
-                
-                elif request.method == 'PUT':
-                    # Update existing position
-                    data = request.get_json()
-                    position_index = data.get('index')
-                    updated_position = data.get('position')
-                    
-                    if position_index is None or updated_position is None:
-                        return jsonify({'error': 'Missing index or position data'}), 400
-                    
-                    current_positions = self.robot_invigilator.config.config.get('student_positions', [])
-                    
-                    if 0 <= position_index < len(current_positions):
-                        current_positions[position_index] = updated_position
-                        self.robot_invigilator.config.update_config({'student_positions': current_positions})
-                        
-                        return jsonify({
-                            'success': True,
-                            'message': 'Position updated successfully',
-                            'positions': current_positions
-                        })
-                    else:
-                        return jsonify({'error': 'Invalid position index'}), 400
-                
-                elif request.method == 'DELETE':
-                    # Delete position
-                    position_index = request.args.get('index', type=int)
-                    
-                    if position_index is None:
-                        return jsonify({'error': 'Missing position index'}), 400
-                    
-                    current_positions = self.robot_invigilator.config.config.get('student_positions', [])
-                    
-                    if 0 <= position_index < len(current_positions):
-                        removed_position = current_positions.pop(position_index)
-                        self.robot_invigilator.config.update_config({'student_positions': current_positions})
-                        
-                        return jsonify({
-                            'success': True,
-                            'message': f'Position "{removed_position.get("name", "")}" deleted successfully',
-                            'positions': current_positions
-                        })
-                    else:
-                        return jsonify({'error': 'Invalid position index'}), 400
-                    
-            except Exception as e:
-                logger.error(f"Error managing robot positions: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/invigilation/logs')
-        def api_robot_logs():
-            """Get invigilation logs and history"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'error': 'Robot controller not available'}), 400
-                
-                return jsonify({
-                    'current_log': self.robot_invigilator.invigilation_log,
-                    'status': self.robot_invigilator.get_status(),
-                    'log_count': len(self.robot_invigilator.invigilation_log)
-                })
-                
-            except Exception as e:
-                logger.error(f"Error getting robot logs: {e}")
-                return jsonify({'error': str(e)}), 500
-        
-        @self.app.route('/api/robot/movement/manual', methods=['POST'])
-        def api_robot_manual_movement():
-            """Manual robot movement control for testing"""
-            try:
-                if not self.robot_invigilator:
-                    return jsonify({'error': 'Robot controller not available'}), 400
-                
-                if not self.robot_invigilator.is_connected:
-                    return jsonify({'error': 'Robot not connected'}), 400
-                
-                data = request.get_json()
-                action = data.get('action')
-                duration = data.get('duration', 1.0)
-                speed = data.get('speed', 80)
-                
-                if action == 'forward':
-                    self.robot_invigilator.robot_controller.move_forward(speed)
-                    time.sleep(duration)
-                    self.robot_invigilator.robot_controller.stop()
-                elif action == 'backward':
-                    self.robot_invigilator.robot_controller.move_backward(speed)
-                    time.sleep(duration)
-                    self.robot_invigilator.robot_controller.stop()
-                elif action == 'left':
-                    self.robot_invigilator.robot_controller.turn_left(speed)
-                    time.sleep(duration)
-                    self.robot_invigilator.robot_controller.stop()
-                elif action == 'right':
-                    self.robot_invigilator.robot_controller.turn_right(speed)
-                    time.sleep(duration)
-                    self.robot_invigilator.robot_controller.stop()
-                elif action == 'stop':
-                    self.robot_invigilator.robot_controller.stop()
+                if realtime:
+                    violations = self.monitoring_system.get_recent_violations(limit)
                 else:
-                    return jsonify({'error': 'Invalid action'}), 400
+                    violations = self.monitoring_system.get_violations(
+                        limit=limit, offset=offset, session_id=session_id, 
+                        violation_type=violation_type
+                    )
                 
                 return jsonify({
-                    'success': True,
-                    'message': f'Manual {action} movement completed'
+                    'violations': violations,
+                    'total_count': len(violations)
                 })
-                
             except Exception as e:
-                logger.error(f"Error in manual movement: {e}")
+                logger.error(f"Error getting violations: {e}")
                 return jsonify({'error': str(e)}), 500
-
-        # === EXISTING APIs (monitoring, students, etc.) ===
         
         @self.app.route('/api/monitoring', methods=['POST'])
         def api_monitoring():
-            """Control monitoring with robot integration"""
+            """Control monitoring"""
             try:
                 data = request.get_json()
                 action = data.get('action')
@@ -452,6 +164,15 @@ class WebServer:
                     self.monitoring_system.stop_monitoring()
                     return jsonify({'success': True, 'message': 'Monitoring stopped'})
                 
+                elif action == 'toggle_attendance':
+                    success = self.monitoring_system.toggle_attendance_mode()
+                    if success:
+                        is_attendance = self.monitoring_system.is_attendance_active()
+                        mode = "attendance" if is_attendance else "monitoring"
+                        return jsonify({'success': True, 'message': f'Switched to {mode} mode'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to toggle attendance mode'})
+                
                 elif action == 'restart':
                     self.monitoring_system.stop_monitoring()
                     time.sleep(1)
@@ -468,8 +189,353 @@ class WebServer:
                 logger.error(f"Error controlling monitoring: {e}")
                 return jsonify({'error': str(e)}), 500
         
-        # Keep existing student, attendance, and other APIs...
-        # (abbreviated for space - they remain the same)
+        # NEW: Robot Control APIs
+        @self.app.route('/api/robot', methods=['GET', 'POST'])
+        def api_robot():
+            """Control robot"""
+            if request.method == 'GET':
+                # Get robot status
+                try:
+                    robot_status = self.monitoring_system.get_robot_status()
+                    return jsonify(robot_status)
+                except Exception as e:
+                    logger.error(f"Error getting robot status: {e}")
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'POST':
+                # Control robot
+                try:
+                    data = request.get_json()
+                    action = data.get('action')
+                    
+                    if action == 'connect':
+                        success, message = self.monitoring_system.connect_robot()
+                        return jsonify({'success': success, 'message': message})
+                    
+                    elif action == 'disconnect':
+                        self.monitoring_system.disconnect_robot()
+                        return jsonify({'success': True, 'message': 'Robot disconnected'})
+                    
+                    elif action == 'start_invigilation':
+                        success, message = self.monitoring_system.start_invigilation_sequence()
+                        return jsonify({'success': success, 'message': message})
+                    
+                    elif action == 'stop_invigilation':
+                        self.monitoring_system.stop_invigilation_sequence()
+                        return jsonify({'success': True, 'message': 'Invigilation sequence stopped'})
+                    
+                    elif action == 'test_connection':
+                        success, message = self.monitoring_system.test_robot_connection()
+                        return jsonify({'success': success, 'message': message})
+                    
+                    elif action == 'emergency_stop':
+                        self.monitoring_system.emergency_stop_robot()
+                        return jsonify({'success': True, 'message': 'Emergency stop activated'})
+                    
+                    else:
+                        return jsonify({'error': 'Invalid robot action'}), 400
+                        
+                except Exception as e:
+                    logger.error(f"Error controlling robot: {e}")
+                    return jsonify({'error': str(e)}), 500
+        
+        # Student Management APIs (keeping existing code)
+        @self.app.route('/api/students', methods=['GET', 'POST'])
+        def api_students():
+            """Get or register students"""
+            if request.method == 'GET':
+                try:
+                    active_only = request.args.get('active_only', 'true').lower() == 'true'
+                    students = self.monitoring_system.get_all_students(active_only=active_only)
+                    return jsonify({'students': students})
+                except Exception as e:
+                    logger.error(f"Error getting students: {e}")
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'POST':
+                try:
+                    if 'photo' not in request.files:
+                        return jsonify({'error': 'No photo file provided'}), 400
+                    
+                    photo_file = request.files['photo']
+                    if photo_file.filename == '':
+                        return jsonify({'error': 'No photo file selected'}), 400
+                    
+                    student_data = {
+                        'student_id': request.form.get('student_id'),
+                        'first_name': request.form.get('first_name'),
+                        'last_name': request.form.get('last_name'),
+                        'email': request.form.get('email', ''),
+                        'phone': request.form.get('phone', ''),
+                        'course': request.form.get('course', ''),
+                        'semester': request.form.get('semester', '')
+                    }
+                    
+                    required_fields = ['student_id', 'first_name', 'last_name']
+                    for field in required_fields:
+                        if not student_data.get(field):
+                            return jsonify({'error': f'Missing required field: {field}'}), 400
+                    
+                    success, message = self.monitoring_system.register_student(student_data, photo_file)
+                    
+                    if success:
+                        return jsonify({'success': True, 'message': message})
+                    else:
+                        return jsonify({'success': False, 'message': message}), 400
+                        
+                except Exception as e:
+                    logger.error(f"Error registering student: {e}")
+                    return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/students/<student_id>', methods=['GET', 'PUT', 'DELETE'])
+        def api_student_detail(student_id):
+            """Get, update, or delete specific student"""
+            if request.method == 'GET':
+                try:
+                    student = self.monitoring_system.get_student(student_id)
+                    if student:
+                        return jsonify({'student': student})
+                    else:
+                        return jsonify({'error': 'Student not found'}), 404
+                except Exception as e:
+                    logger.error(f"Error getting student {student_id}: {e}")
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'PUT':
+                try:
+                    updates = request.get_json()
+                    success = self.monitoring_system.update_student(student_id, updates)
+                    
+                    if success:
+                        return jsonify({'success': True, 'message': 'Student updated successfully'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to update student'}), 400
+                        
+                except Exception as e:
+                    logger.error(f"Error updating student {student_id}: {e}")
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'DELETE':
+                try:
+                    success = self.monitoring_system.delete_student(student_id)
+                    
+                    if success:
+                        return jsonify({'success': True, 'message': 'Student deleted successfully'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to delete student'}), 400
+                        
+                except Exception as e:
+                    logger.error(f"Error deleting student {student_id}: {e}")
+                    return jsonify({'error': str(e)}), 500
+        
+        # Attendance Management APIs (keeping existing code)
+        @self.app.route('/api/attendance', methods=['GET', 'POST'])
+        def api_attendance():
+            """Get attendance or mark attendance"""
+            if request.method == 'GET':
+                try:
+                    exam_date = request.args.get('exam_date')
+                    attendance_data = self.monitoring_system.get_attendance_for_date(exam_date)
+                    return jsonify({'attendance': attendance_data})
+                except Exception as e:
+                    logger.error(f"Error getting attendance: {e}")
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'POST':
+                try:
+                    data = request.get_json()
+                    action = data.get('action')
+                    student_id = data.get('student_id')
+                    
+                    if action == 'mark':
+                        notes = data.get('notes', '')
+                        success, message = self.monitoring_system.manual_mark_attendance(student_id, notes)
+                        return jsonify({'success': success, 'message': message})
+                    
+                    elif action == 'unmark':
+                        success, message = self.monitoring_system.unmark_attendance(student_id)
+                        return jsonify({'success': success, 'message': message})
+                    
+                    else:
+                        return jsonify({'error': 'Invalid action'}), 400
+                        
+                except Exception as e:
+                    logger.error(f"Error with attendance action: {e}")
+                    return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/attendance/summary')
+        def api_attendance_summary():
+            """Get attendance summary"""
+            try:
+                start_date = request.args.get('start_date')
+                end_date = request.args.get('end_date')
+                
+                summary = self.monitoring_system.get_attendance_summary(start_date, end_date)
+                return jsonify({'summary': summary})
+            except Exception as e:
+                logger.error(f"Error getting attendance summary: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/attendance/session', methods=['POST'])
+        def api_attendance_session():
+            """Control attendance session"""
+            try:
+                data = request.get_json()
+                action = data.get('action')
+                
+                if action == 'start':
+                    mode = data.get('mode', 'auto')
+                    success = self.monitoring_system.start_attendance_session(mode)
+                    if success:
+                        return jsonify({'success': True, 'message': f'Attendance session started in {mode} mode'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to start attendance session'})
+                
+                elif action == 'stop':
+                    summary = self.monitoring_system.stop_attendance_session()
+                    return jsonify({'success': True, 'message': 'Attendance session stopped', 'summary': summary})
+                
+                else:
+                    return jsonify({'error': 'Invalid action'}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error controlling attendance session: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/camera', methods=['POST'])
+        def api_camera():
+            """Control camera"""
+            try:
+                data = request.get_json()
+                action = data.get('action')
+                
+                if action == 'restart':
+                    success = self.monitoring_system.restart_camera()
+                    if success:
+                        return jsonify({'success': True, 'message': 'Camera restarted'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to restart camera'})
+                
+                elif action == 'screenshot':
+                    filename = f"manual_screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                    success = self.monitoring_system.capture_screenshot(filename)
+                    if success:
+                        return jsonify({'success': True, 'message': f'Screenshot saved: {filename}'})
+                    else:
+                        return jsonify({'success': False, 'message': 'Failed to take screenshot'})
+                
+                else:
+                    return jsonify({'error': 'Invalid camera action'}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error controlling camera: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/export')
+        def api_export():
+            """Export data"""
+            try:
+                export_type = request.args.get('type', 'violations')
+                export_format = request.args.get('format', 'json')
+                exam_date = request.args.get('exam_date')
+                
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                
+                if export_type == 'attendance':
+                    filename = f"attendance_report_{timestamp}.json"
+                    success = self.monitoring_system.export_attendance_report(filename, exam_date)
+                else:
+                    session_id = request.args.get('session_id')
+                    filename = f"exam_monitor_export_{timestamp}.json"
+                    success = self.monitoring_system.export_data(filename, session_id=session_id)
+                
+                if success:
+                    return jsonify({'success': True, 'filename': filename})
+                else:
+                    return jsonify({'success': False, 'message': 'Export failed'})
+                    
+            except Exception as e:
+                logger.error(f"Error exporting data: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/violations/summary')
+        def api_violations_summary():
+            """Get violations summary"""
+            try:
+                session_id = request.args.get('session_id')
+                days = request.args.get('days', type=int)
+                
+                summary = self.monitoring_system.get_violations_summary(
+                    session_id=session_id, days=days
+                )
+                
+                return jsonify({'summary': summary})
+            except Exception as e:
+                logger.error(f"Error getting violations summary: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/sessions')
+        def api_sessions():
+            """Get monitoring sessions"""
+            try:
+                limit = request.args.get('limit', 20, type=int)
+                sessions = self.monitoring_system.get_sessions(limit=limit)
+                
+                return jsonify({'sessions': sessions})
+            except Exception as e:
+                logger.error(f"Error getting sessions: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/config', methods=['GET', 'POST'])
+        def api_config():
+            """Get or update configuration"""
+            if request.method == 'GET':
+                try:
+                    return jsonify(self.config_manager.config)
+                except Exception as e:
+                    return jsonify({'error': str(e)}), 500
+            
+            elif request.method == 'POST':
+                try:
+                    new_config = request.get_json()
+                    
+                    for section, values in new_config.items():
+                        if isinstance(values, dict):
+                            self.config_manager.update_section(section, values)
+                        else:
+                            self.config_manager.config[section] = values
+                    
+                    self.config_manager.save_config()
+                    
+                    return jsonify({'success': True, 'message': 'Configuration updated'})
+                except Exception as e:
+                    logger.error(f"Error updating config: {e}")
+                    return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/api/system')
+        def api_system():
+            """Get system information"""
+            try:
+                from exam_utils import get_system_info
+                system_info = get_system_info()
+                
+                return jsonify({
+                    'system_info': system_info,
+                    'database_stats': self.monitoring_system.get_database_stats(),
+                    'uptime': time.time() - self.monitoring_system.start_time if hasattr(self.monitoring_system, 'start_time') else 0
+                })
+            except Exception as e:
+                logger.error(f"Error getting system info: {e}")
+                return jsonify({'error': str(e)}), 500
+        
+        @self.app.route('/screenshots/<filename>')
+        def screenshots(filename):
+            """Serve screenshot files"""
+            try:
+                return send_from_directory('screenshots', filename)
+            except Exception as e:
+                logger.error(f"Error serving screenshot: {e}")
+                return jsonify({'error': 'File not found'}), 404
         
         # Error handlers
         @self.app.errorhandler(404)
@@ -480,102 +546,6 @@ class WebServer:
         def internal_error(error):
             return jsonify({'error': 'Internal server error'}), 500
     
-    def _get_invigilation_progress(self):
-        """Get real-time invigilation progress details"""
-        try:
-            if not self.robot_invigilator or not self.robot_invigilator.is_invigilating:
-                return None
-            
-            config = self.robot_invigilator.config.config
-            total_positions = len(config.get('student_positions', []))
-            current_position = self.robot_invigilator.current_position
-            positions_visited = self.robot_invigilator.positions_visited
-            
-            # Calculate progress percentage
-            progress_percentage = (positions_visited / total_positions * 100) if total_positions > 0 else 0
-            
-            # Estimate remaining time
-            detection_duration = config.get('detection_duration', 30)
-            pause_between_moves = config.get('pause_between_moves', 2.0)
-            
-            remaining_positions = total_positions - positions_visited
-            estimated_remaining_time = remaining_positions * (detection_duration + pause_between_moves + 5)  # +5 for movement
-            
-            return {
-                'progress_percentage': round(progress_percentage, 1),
-                'current_position': current_position,
-                'positions_visited': positions_visited,
-                'total_positions': total_positions,
-                'estimated_remaining_seconds': estimated_remaining_time,
-                'current_position_name': config.get('student_positions', [{}])[current_position - 1].get('name', f'Position {current_position}') if current_position > 0 else 'Moving to first position'
-            }
-        except Exception as e:
-            logger.error(f"Error getting invigilation progress: {e}")
-            return None
-    
-    def _estimate_invigilation_duration(self):
-        """Estimate total invigilation duration in seconds"""
-        try:
-            if not self.robot_invigilator:
-                return 0
-            
-            config = self.robot_invigilator.config.config
-            total_positions = len(config.get('student_positions', []))
-            detection_duration = config.get('detection_duration', 30)
-            pause_between_moves = config.get('pause_between_moves', 2.0)
-            
-            # Estimate movement time per position (average)
-            avg_movement_time = 5  # seconds
-            
-            total_time = total_positions * (detection_duration + pause_between_moves + avg_movement_time)
-            
-            # Add time to return to start if configured
-            if config.get('return_to_start', False):
-                total_time += 10  # estimated return time
-            
-            return int(total_time)
-        except:
-            return 0
-    
-    def _validate_robot_config(self, config):
-        """Validate robot configuration"""
-        errors = []
-        
-        try:
-            # Validate movement speeds
-            movement_speed = config.get('movement_speed', 0)
-            if not (0 <= movement_speed <= 255):
-                errors.append('Movement speed must be between 0 and 255')
-            
-            turn_speed = config.get('turn_speed', 0)
-            if not (0 <= turn_speed <= 255):
-                errors.append('Turn speed must be between 0 and 255')
-            
-            # Validate detection duration
-            detection_duration = config.get('detection_duration', 0)
-            if not (5 <= detection_duration <= 300):
-                errors.append('Detection duration must be between 5 and 300 seconds')
-            
-            # Validate student positions
-            positions = config.get('student_positions', [])
-            if len(positions) == 0:
-                errors.append('At least one student position must be configured')
-            
-            for i, position in enumerate(positions):
-                if 'name' not in position or not position['name']:
-                    errors.append(f'Position {i+1}: Name is required')
-                
-                if 'forward_time' not in position or position['forward_time'] < 0:
-                    errors.append(f'Position {i+1}: Valid forward_time is required')
-                
-                if 'turn_angle' not in position or position['turn_angle'] not in [0, 1, 2]:
-                    errors.append(f'Position {i+1}: turn_angle must be 0 (none), 1 (left), or 2 (right)')
-        
-        except Exception as e:
-            errors.append(f'Configuration validation error: {str(e)}')
-        
-        return errors
-    
     def _generate_frames(self):
         """Generate frames for video streaming"""
         while True:
@@ -584,7 +554,6 @@ class WebServer:
                     with self.frame_lock:
                         frame = self.current_frame.copy()
                     
-                    # Encode frame as JPEG
                     ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
                     if ret:
                         frame_bytes = buffer.tobytes()
@@ -603,35 +572,9 @@ class WebServer:
                 self.current_frame = frame
         except Exception as e:
             logger.error(f"Error updating frame: {e}")
-    
-    def _create_templates(self):
-        """Create all HTML templates"""
-        templates_dir = Path('templates')
-        templates_dir.mkdir(exist_ok=True)
-        
-        # Create enhanced main template with robot integration
-        self._create_enhanced_main_template(templates_dir)
-        
-        # Create comprehensive robot control template
-        self._create_comprehensive_robot_template(templates_dir)
-        
-        # Keep existing templates (attendance, students, reports)
-        # (abbreviated for space)
-    
-    def _create_enhanced_main_template(self, templates_dir):
-        """Create main template with robot status integration"""
-        # This would include the enhanced main template with robot status display
-        # (Implementation abbreviated for space - similar to existing but with robot integration)
-        pass
-    
-    def _create_comprehensive_robot_template(self, templates_dir):
-        """Create comprehensive robot control template"""
-        # This would include the full robot control interface
-        # (Implementation abbreviated for space - full template with all robot features)
-        pass
-    
+            
     def start_server(self, host: str = None, port: int = None, debug: bool = False):
-        """Start the Flask web server with robot support"""
+        """Start the Flask web server"""
         if not FLASK_AVAILABLE:
             logger.error("Flask not available - cannot start web server")
             return False
@@ -640,29 +583,20 @@ class WebServer:
             logger.error("Flask app not initialized")
             return False
         
-        # Use config values if not provided
         host = host or self.web_config.get('host', '0.0.0.0')
         port = port or self.web_config.get('port', 5000)
         debug = debug or self.web_config.get('debug', False)
         
         try:
-            logger.info(f"Starting enhanced web server with robot control on http://{host}:{port}")
+            logger.info(f"Starting web server with robot control on http://{host}:{port}")
             
             if host == '0.0.0.0':
-                logger.info(f"Enhanced web interface accessible at:")
+                logger.info(f"Web interface accessible at:")
                 logger.info(f"  - Local: http://localhost:{port}")
                 logger.info(f"  - Network: http://YOUR_PI_IP:{port}")
-                logger.info(f"  - Robot Control: http://YOUR_PI_IP:{port}/robot")
-                logger.info(f"Enhanced Features:")
-                logger.info(f"  - Autonomous robot invigilation sequences")
-                logger.info(f"  - Real-time robot status and control")
-                logger.info(f"  - Movement sequence configuration")
-                logger.info(f"  - Emergency stop functionality")
-                logger.info(f"  - Manual robot control for testing")
+                logger.info(f"  - Robot Control: Available via web dashboard")
             
             self.is_running = True
-            
-            # Start Flask server
             self.app.run(host=host, port=port, debug=debug, threaded=True)
             
         except Exception as e:
@@ -673,7 +607,7 @@ class WebServer:
     def stop_server(self):
         """Stop the web server"""
         self.is_running = False
-        logger.info("Enhanced web server stopped")
+        logger.info("Web server stopped")
     
     def is_server_running(self) -> bool:
         """Check if server is running"""
