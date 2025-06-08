@@ -1,5 +1,6 @@
 #!/bin/bash
 # Enhanced install.sh - Installation script for Exam Monitoring System with Attendance Support and Robot Invigilator
+# Modified to remove all user input prompts
 
 echo "=== Exam Monitoring System Setup (Enhanced with Robot Invigilator) ==="
 echo "This script will install all required dependencies including face recognition and robot control"
@@ -36,17 +37,77 @@ sudo apt install -y libcamera-apps libcamera-dev
 sudo apt install -y v4l-utils  # V4L2 camera utilities
 sudo apt install -y gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 sudo apt install -y gstreamer1.0-libcamera  # GStreamer camera support for Pi 5
-sudo raspi-config nonint do_camera 0  # Enable camera
+
+# Enable camera without interactive prompts
+echo "Enabling camera support..."
+# Use direct config file modification instead of raspi-config
+if ! grep -q "^camera_auto_detect=1" /boot/firmware/config.txt 2>/dev/null && ! grep -q "^camera_auto_detect=1" /boot/config.txt 2>/dev/null; then
+    # Try modern path first, fallback to legacy
+    if [ -f /boot/firmware/config.txt ]; then
+        echo "camera_auto_detect=1" | sudo tee -a /boot/firmware/config.txt > /dev/null
+        echo "dtoverlay=camera" | sudo tee -a /boot/firmware/config.txt > /dev/null
+    elif [ -f /boot/config.txt ]; then
+        echo "camera_auto_detect=1" | sudo tee -a /boot/config.txt > /dev/null
+        echo "dtoverlay=camera" | sudo tee -a /boot/config.txt > /dev/null
+    fi
+    echo "Camera support enabled in config.txt"
+else
+    echo "Camera support already enabled"
+fi
 
 # NEW: Install robot control dependencies
 echo "Installing robot control dependencies..."
 sudo apt install -y python3-serial  # For serial communication with robot
 sudo apt install -y minicom screen  # For debugging serial connections
-sudo raspi-config nonint do_serial 0  # Enable serial/UART
+
+# Enable serial/UART without interactive prompts
+echo "Enabling serial/UART support..."
+# Direct config file modification for UART
+if [ -f /boot/firmware/config.txt ]; then
+    CONFIG_FILE="/boot/firmware/config.txt"
+elif [ -f /boot/config.txt ]; then
+    CONFIG_FILE="/boot/config.txt"
+else
+    echo "Warning: Could not find config.txt file"
+    CONFIG_FILE=""
+fi
+
+if [ -n "$CONFIG_FILE" ]; then
+    # Enable UART
+    if ! grep -q "^enable_uart=1" "$CONFIG_FILE"; then
+        echo "enable_uart=1" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        echo "UART enabled in config.txt"
+    else
+        echo "UART already enabled"
+    fi
+    
+    # Disable serial console (so we can use serial for robot communication)
+    if ! grep -q "^dtoverlay=disable-bt" "$CONFIG_FILE"; then
+        echo "dtoverlay=disable-bt" | sudo tee -a "$CONFIG_FILE" > /dev/null
+        echo "Bluetooth disabled to free up UART"
+    fi
+fi
+
+# Disable serial console in cmdline.txt to free up serial port for robot
+if [ -f /boot/firmware/cmdline.txt ]; then
+    CMDLINE_FILE="/boot/firmware/cmdline.txt"
+elif [ -f /boot/cmdline.txt ]; then
+    CMDLINE_FILE="/boot/cmdline.txt"
+else
+    CMDLINE_FILE=""
+fi
+
+if [ -n "$CMDLINE_FILE" ]; then
+    # Remove console=serial0,115200 if present
+    sudo sed -i 's/console=serial0,[0-9]\+ //g' "$CMDLINE_FILE"
+    sudo sed -i 's/console=ttyAMA0,[0-9]\+ //g' "$CMDLINE_FILE"
+    echo "Serial console disabled in cmdline.txt"
+fi
 
 # Add user to video and dialout groups for camera and serial access
 sudo usermod -a -G video $USER
 sudo usermod -a -G dialout $USER  # NEW: For serial port access
+echo "User added to video and dialout groups"
 
 # Create virtual environment (in current directory)
 echo "Creating Python virtual environment..."
@@ -787,6 +848,12 @@ echo "   • Serial port: /dev/ttyAMA0 (enabled)"
 echo "   • User added to dialout group for serial access"
 echo "   • Robot test script: ${CURRENT_DIR}/exam_monitor/test_robot.py"
 echo ""
+echo "🔧 Hardware Configuration Applied (No Reboot Required for Basic Testing):"
+echo "   • Camera support enabled in config.txt"
+echo "   • UART enabled for robot communication"
+echo "   • Serial console disabled to free up UART"
+echo "   • Bluetooth disabled to prevent UART conflicts"
+echo ""
 echo "📂 Source Organization Tip:"
 echo "   For better organization, keep template files in a templates/ folder:"
 echo "   templates/base.html, templates/index.html, etc."
@@ -864,9 +931,10 @@ echo "   • ✅ Professional-grade reporting system"
 echo "   • ✅ Complete HTML template system"
 echo "   • ✅ Organized project structure (templates/ folder)"
 echo "   • ✅ Flexible installation (supports multiple file layouts)"
+echo "   • ✅ Fully automated installation (no user prompts)"
 echo ""
 echo "🔄 Next Steps:"
-echo "   1. 🔄 Reboot recommended: sudo reboot"
+echo "   1. 🔄 Reboot recommended for hardware changes: sudo reboot"
 echo "   2. 📸 Test camera: libcamera-still -o test.jpg"
 echo "   3. 🤖 Test robot: ${CURRENT_DIR}/exam_monitor/test_robot.py"
 echo "   4. 👥 Register students via web interface"
@@ -876,6 +944,7 @@ echo "   7. 🌐 Access web interface from any device on network"
 echo ""
 echo "🔧 Robot Setup Notes:"
 echo "   • Connect robot to GPIO serial pins (TX/RX)"
+echo "   • GPIO 14 (TX) and GPIO 15 (RX) are enabled for serial communication"
 echo "   • Ensure robot is powered and responsive"
 echo "   • Test robot connection before starting invigilation"
 echo "   • Configure invigilation_sequence.py for your specific robot behavior"
