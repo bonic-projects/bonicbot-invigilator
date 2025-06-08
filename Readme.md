@@ -451,3 +451,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⭐ Star this repository if you found it helpful!**
 
 **🎓 Enroll in the full course at [Bonic.ai](https://bonic.ai) for comprehensive learning experience.**
+
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable deploy-production.service
+sudo systemctl start deploy-production.service
+
+# Stop and disable
+sudo systemctl stop deploy-production.service
+sudo systemctl disable deploy-production.service
+
+# Verify it's disabled
+sudo systemctl status deploy-production.service
